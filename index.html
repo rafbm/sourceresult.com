@@ -113,6 +113,8 @@
       EDITOR.getSession().setUseWrapMode(true)
       EDITOR.setShowPrintMargin(false)
 
+      EDITOR.commands.removeCommand('gotoline')
+
       $('#source').css('visibility', 'visible')
 
       var changeTimeout = null
