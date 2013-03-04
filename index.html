@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Write your HTML/CSS/JS code. See the rendered result. Save and share. That’s it. Just like “Show Web Preview” in good ol’ TextMate.">
+  <title>SourceResult — Write the source. See the result.</title>
+  <style>
+    body { margin: 0; padding: 0 }
+    body.saving *, body.loading * { cursor: wait }
+
+    #source, iframe {
+      position: absolute;
+      height: -webkit-calc(100% - 28px);
+      height: -moz-calc(100% - 28px);
+      height: -ms-calc(100% - 28px);
+      height: -o-calc(100% - 28px);
+      height: calc(100% - 28px);
+    }
+    #source {
+      width: 42%;
+      left: 0;
+      font-size: 14px;
+      border-right: 1px solid #e8e8e8;
+    }
+    iframe {
+      width: 58%;
+      right: 0;
+      border: 0;
+    }
+
+    #save {
+      position: absolute;
+      top: 0;
+      width: 42%;
+      z-index: 1;
+    }
+      #save button {
+        position: absolute;
+        right: 20px; top: 20px;
+        margin: 0;
+      }
+
+    footer {
+      position: absolute;
+      text-align: center;
+      bottom: 0;
+      width: 100%;
+      height: 27px;
+      font: 14px/28px Monaco;
+      border-top: 1px solid #e8e8e8;
+    }
+      footer a {
+        color: blue;
+        text-decoration: none;
+      }
+      footer a:hover, footer a:focus { text-decoration: underline }
+  </style>
+</head>
+<body class="loading">
+  <div id="source" style="visibility: hidden"></div>
+  <iframe id="result"></iframe>
+  <div id="save"><button>Save</button></div>
+  <footer>
+    <a href="http://sourceresult.com">SourceResult</a>
+    is
+    <a href="http://github.com/rafBM/sourceresult.com">made</a>
+    by
+    <a href="http://twitter.com/rafBM">@rafBM</a>
+    at
+    <a href="http://heliom.ca">Heliom</a>
+    using
+    <a href="http://gist.github.com">Gist</a>
+    and
+    <a href="http://heroku.com">Heroku</a>
+  </footer>
+
+  <script src="http://zeptojs.com/zepto.min.js"></script>
+  <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js"></script>
+
+  <script>
+    var EDITOR = ace.edit('source')
+      , BUTTON = $('#save button')
+      , PLACEHOLDER = '<!DOCTYPE html>\n\
+<html>\n\
+<head>\n\
+  <meta charset="utf-8">\n\
+  <style>\n\
+    body {\n\
+      font: 16px/1.4 \'Helvetica Neue\';\n\
+      padding: 20px;\n\
+    }\n\
+  </style>\n\
+</head>\n\
+<body>\n\
+  <h1>Demo</h1>\n\
+\n\
+  <script src="http://zeptojs.com/zepto.min.js"><\/script>\n\
+  <script>\n\
+    // alert(\'Hello, world!\')\n\
+  <\/script>\n\
+</body>\n\
+</html>\n\
+'
+
+    function init() {
+      handleUrl()
+      window.onpopstate = handleUrl
+      history.replaceState({}, '', location.href)
+
+      EDITOR.getSession().setMode('ace/mode/html')
+      EDITOR.getSession().setUseSoftTabs(true)
+      EDITOR.getSession().setTabSize(2)
+      EDITOR.getSession().setUseWrapMode(true)
+      EDITOR.setShowPrintMargin(false)
+
+      $('#source').css('visibility', 'visible')
+
+      var changeTimeout = null
+      EDITOR.getSession().on('change', function() {
+        clearTimeout(changeTimeout)
+        changeTimeout = setTimeout(renderResult, 100)
+      })
+
+      BUTTON.on('click', save)
+    }
+
+    function renderResult() {
+      var newIframe = document.createElement('iframe')
+      newIframe.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(EDITOR.getValue())
+
+      // append new iframe before removing old one to prevent flickering
+      document.body.appendChild(newIframe)
+      $('#result').remove()
+      newIframe.id  = 'result'
+
+      // amazing way to force re-rendering in Firefox lol
+      window.resizeBy(1, 1) && window.resizeBy(-1, -1)
+    }
+
+    function newPath() {
+      return location.pathname == '/'
+    }
+
+    function showPath() {
+      return !newPath()
+    }
+
+    function redirectTo(path) {
+      history.pushState({}, '', path)
+      handleUrl()
+    }
+
+    function notFound() {
+      if (confirm('404 Not Found'))
+        redirectTo('/')
+    }
+
+    function loadDefault() {
+      EDITOR.setValue(PLACEHOLDER)
+      EDITOR.gotoLine(13, 6)
+      EDITOR.getSession().selection.selectTo(12, 10)
+      EDITOR.focus()
+      document.body.classList.remove('loading')
+    }
+
+    function loadGist() {
+      $.ajax({
+        url: 'https://api.github.com/gists' + location.pathname + '?client_id=85b403b648a943f85690',
+        type: 'GET',
+        success: function(gist) {
+          try {
+            EDITOR.setValue(gist.files['source.html'].content)
+            EDITOR.getSession().selection.moveCursorFileStart()
+            EDITOR.focus()
+          } catch(e) { notFound() } finally { document.body.classList.remove('loading') }
+        },
+        error: notFound,
+      })
+    }
+
+    function handleUrl() {
+      showPath() ? loadGist() : loadDefault()
+    }
+
+    function save() {
+      EDITOR.focus()
+      BUTTON[0].disabled = true
+      document.body.classList.add('saving')
+
+      $.ajax({
+        url: 'https://api.github.com/gists?client_id=85b403b648a943f85690',
+        type: 'POST',
+        data: JSON.stringify({
+          description: 'Created by SourceResult (http://sourceresult.com) See live preview at http://sourceresult.com/{THIS_GIST_ID}',
+          public: true,
+          files: { 'source.html': {content: EDITOR.getValue()} }
+        }),
+        success: function(gist) {
+          redirectTo(gist.id)
+          BUTTON[0].disabled = false
+          document.body.classList.remove('saving')
+        },
+        error: function() {
+          alert('There was an error while saving… probably an issue with GitHub Gists.')
+          BUTTON[0].disabled = false
+          document.body.classList.remove('saving')
+        },
+      })
+    }
+
+    init()
+  </script>
+  <script>
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-31026266-3']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+</body>
+</html>
