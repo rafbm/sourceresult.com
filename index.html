@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="description" content="Write your HTML/CSS/JS code. See the rendered result. Save and share. That’s it. Just like “Show Web Preview” in good ol’ TextMate.">
+  <meta name="viewport" content="width=device-width">
   <title>SourceResult — Write the source. See the result.</title>
   <style>
     body { margin: 0; padding: 0 }
@@ -21,24 +22,36 @@
       left: 0;
       font-size: 14px;
       border-right: 1px solid #e8e8e8;
+      -webkit-overflow-scrolling: touch;
     }
     iframe {
       width: 58%;
       right: 0;
       border: 0;
+      background-color: #fff;
     }
 
-    #save {
+    #save, #toggle {
       position: absolute;
       top: 0;
       width: 42%;
       z-index: 1;
     }
-      #save button {
+      #save button,
+      #toggle button {
         position: absolute;
-        right: 20px; top: 20px;
+        top: 20px;
+        right: 20px;
         margin: 0;
       }
+      #save button { right: 20px }
+
+    #toggle {
+      width: 100%;
+      z-index: 5;
+      display: none;
+    }
+      #toggle .button-result { display: none }
 
     footer {
       position: absolute;
@@ -54,12 +67,32 @@
         text-decoration: none;
       }
       footer a:hover, footer a:focus { text-decoration: underline }
+
+    @media (max-width: 800px) {
+      #source, iframe { width: 100% }
+      #source { height: 100% }
+      #source, #save { display: none }
+      #toggle { display: block }
+
+      .source #source,
+      .source #save { display: block }
+      .source #save { width: 100% }
+      .source #save button { right: 76px }
+      .source iframe { display: none }
+      .source #toggle .button-source { display: none }
+      .source #toggle .button-result { display: block }
+      .source footer { display: none }
+    }
   </style>
 </head>
 <body class="loading">
   <div id="source" style="visibility: hidden"></div>
   <iframe id="result"></iframe>
   <div id="save"><button>Save</button></div>
+  <div id="toggle">
+    <button class="button-source">Source</button>
+    <button class="button-result">Result</button>
+  </div>
   <footer>
     <a href="http://sourceresult.com">SourceResult</a>
     is
@@ -80,6 +113,7 @@
   <script>
     var EDITOR = ace.edit('source')
       , BUTTON = $('#save button')
+      , TOGGLE_BUTTONS = $('#toggle button')
       , PLACEHOLDER = '<!DOCTYPE html>\n\
 <html>\n\
 <head>\n\
@@ -110,7 +144,7 @@
       EDITOR.getSession().setMode('ace/mode/html')
       EDITOR.getSession().setUseSoftTabs(true)
       EDITOR.getSession().setTabSize(2)
-      EDITOR.getSession().setUseWrapMode(true)
+      EDITOR.getSession().setUseWrapMode(!isTouchDevice())
       EDITOR.setShowPrintMargin(false)
 
       $('#source').css('visibility', 'visible')
@@ -121,6 +155,7 @@
         changeTimeout = setTimeout(renderResult, 100)
       })
 
+      TOGGLE_BUTTONS.on('touchend click', toggleSourceResult)
       BUTTON.on('click', save)
     }
 
@@ -161,6 +196,7 @@
       EDITOR.getSession().selection.selectTo(12, 10)
       EDITOR.focus()
       document.body.classList.remove('loading')
+      document.body.classList.add('source')
     }
 
     function loadGist() {
@@ -206,6 +242,15 @@
           document.body.classList.remove('saving')
         },
       })
+    }
+
+    function isTouchDevice() {
+      return window.ontouchend !== void 0
+    }
+
+    function toggleSourceResult(e) {
+      e.preventDefault()
+      $(document.body).toggleClass('source')
     }
 
     init()
