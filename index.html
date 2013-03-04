@@ -114,6 +114,8 @@
       EDITOR.getSession().setUseWrapMode(true)
       EDITOR.setShowPrintMargin(false)
 
+      EDITOR.commands.removeCommand('gotoline')
+
       $('#source').css('visibility', 'visible')
 
       var changeTimeout = null
@@ -152,8 +154,12 @@
       return !newPath()
     }
 
-    function redirectTo(path) {
+    function changeUrl(path) {
       history.pushState({}, '', path)
+    }
+
+    function redirectTo(path) {
+      changeUrl(path)
       handleUrl()
     }
 
@@ -203,7 +209,7 @@
           files: { 'source.html': {content: EDITOR.getValue()} }
         }),
         success: function(gist) {
-          redirectTo(gist.id)
+          changeUrl(gist.id)
           BUTTON[0].disabled = false
           document.body.classList.remove('saving')
         },
