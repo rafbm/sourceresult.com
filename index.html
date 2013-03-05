@@ -80,6 +80,7 @@
   <script>
     var EDITOR = ace.edit('source')
       , BUTTON = $('#save button')
+      , KEYS = { s: 83 }
       , PLACEHOLDER = '<!DOCTYPE html>\n\
 <html>\n\
 <head>\n\
@@ -124,6 +125,12 @@
       })
 
       BUTTON.on('click', save)
+
+      $(document).on('keydown', function(e){
+        if ([KEYS.s].indexOf(e.keyCode) == -1 || !e.metaKey) return
+        e.preventDefault()
+        save()
+      })
     }
 
     function renderResult() {
